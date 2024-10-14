@@ -3,63 +3,73 @@ from typing import Optional
 
 import requests
 
-from app.models.base import BaseModel
+from langchain.chains import LLMChain
+from langchain_community.llms import YandexGPT
+from langchain_core.prompts import PromptTemplate
 
 
-class YandexGPT(BaseModel):
-    """See more on https://yandex.cloud/en-ru/docs/foundation-models/concepts/yandexgpt/models"""
+class YandexModel():
+    def __init__(self) -> None:
+        self.model = YandexGPT(api_key="AQVN0HYDrL1Juo_atEB9TGWixMZHv1kbA1O-9W5n", 
+                               folder_id="b1gmupmk7abqoalp07e5")
 
-    model_urls = {
-        "lite": "gpt://{}/yandexgpt-lite/latest",
-        "pro": "gpt://{}/yandexgpt/latest",  # Restricted by competition rules, but you can test accuracy with it
-    }
+    def ask(self, task: str, correct_solution: str, student_solution: str) -> Optional[str]:
+        template = """Ты - профессиональный программист и ментор. Тебе предоставлены:
+        1. Задание
+        2. Правильное решение
+        3. Решение ученика (которое необходимо проверить)
+        Тебе необходимо дать ученику очень короткие ответы о его ошибках, если они есть. 
+        Не пиши исправленный код, просто намекни ученику, в каком месте ошибка. Еще раз:
+        в твоих ответах не должно быть готового кода! Ты можешь давать подсказки, но писать код ты не можешь!
+        Вот примеры:
 
-    def __init__(
-        self,
-        token: str,
-        folder_id: str,
-        model_name: str = "lite",
-        system_prompt: Optional[str] = None,
-        temperature: float = 0.6,
-        max_tokens: int = 2000,
-    ) -> None:
-        super().__init__(system_prompt)
-        self.api_url = "https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
-        self.headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {token}",
-            "x-folder-id": folder_id,
-        }
-        self.model_url = YandexGPT.model_urls[model_name].format(folder_id)
-        self.completion_options = {
-            "stream": False,
-            "temperature": temperature,
-            "maxTokens": str(max_tokens),
-        }
+        1. Задание: Реализуйте программу, которая проверит, что цвет используется только в проекте по созданию логотипа, но не в проекте по созданию дизайна сайта:
+        Даны два списка logo_project и cite_project с кодами используемых цветов (строки).
+        В переменную color считывается код цвета (строка). Этот код уже написан.
+        Программа должна проверять, что код цвета color есть только в списке logo_project, и если да, то печатать True. 
+        В остальных случаях программа печатает False. 
+        Правильное решение: logo_project = ['#a7a8f0', '#a7f0ca', '#b3b4e4', '#e4b3cd', '#e4e3b3', '#c0ced7']
+        cite_project = ['#e4e3b3', '#a7a8f0', '#ccb1e6', '#b4f99e', '#f9b59e', '#c0ced7']
 
-    def ask(self, user_message: str, clear_history: bool = True) -> Optional[str]:
-        if clear_history:
-            self.messages = []
-            if self.system_prompt:
-                self.messages.append({"role": "system", "text": self.system_prompt})
+        color = input()
 
-        self.messages.append({"role": "user", "text": user_message})
+        if color in logo_project and not(color in cite_project):
+            print(True)
+        else:
+            print(False)
+        Решение ученика: logo_project = ['#a7a8f0', '#a7f0ca', '#b3b4e4', '#e4b3cd', '#e4e3b3', '#c0ced7']
+        cite_project = ['#e4e3b3', '#a7a8f0', '#ccb1e6', '#b4f99e', '#f9b59e', '#c0ced7']
 
-        json_request = {
-            "modelUri": self.model_url,
-            "completionOptions": self.completion_options,
-            "messages": self.messages,
-        }
+        color = input()
 
-        response = requests.post(self.api_url, headers=self.headers, json=json_request)
-        if response.status_code != 200:
-            print("Error:", response.status_code, response.text)
-            return None
+        if color in logo_project and color in cite_project:
+            print(True)
+        else:
+            print(False)
+        Комментарий преподавателя: Ошибка в открытых тестах. 
+        Обратите внимание на неверный оператор сравнения — необходимо проверить, что цвет не находится в списке cite_project.
 
-        response_data = response.json()
-        assistant_message = response_data["result"]["alternatives"][0]["message"]["text"]
-        self.messages.append({"role": "assistant", "text": assistant_message})
-        return assistant_message
+        Задание: {task}
+        Правильное решение: {correct_solution}
+        Решение ученика: {student_solution}
+        Комментарий преподавателя:  """
+
+        prompt_template = PromptTemplate(
+            input_variables=["task", "correct_solution", "student_solution"],
+            template=template
+        )
+
+        prompt = prompt_template.format(
+            task=task,
+            correct_solution=correct_solution,
+            student_solution=student_solution
+        )
+
+        llm = YandexGPT(api_key="AQVN0HYDrL1Juo_atEB9TGWixMZHv1kbA1O-9W5n", 
+                        folder_id="b1gmupmk7abqoalp07e5")
+
+        answer = llm(prompt)
+        return answer
 
 
 if __name__ == "__main__":
@@ -67,9 +77,5 @@ if __name__ == "__main__":
 
     load_dotenv()
 
-    yandex_gpt = YandexGPT(
-        token=os.environ["YANDEX_GPT_IAM_TOKEN"],
-        folder_id=os.environ["YANDEX_GPT_FOLDER_ID"],
-        system_prompt="Ты - профессиональный биолог. Отвечай коротко и по делу в научных терминах.",
-    )
-    print(yandex_gpt.ask("Кто такой манул?"))
+    yandex_gpt = YandexModel()
+    print(yandex_gpt.ask())

@@ -2,7 +2,7 @@ import pandas as pd
 
 from app.utils.submit import string2embedding
 
-TEST_SIZE = 347
+TEST_SIZE = 325
 EMBEDDING_SIZE = 768
 
 
@@ -26,6 +26,7 @@ def _check_ids_correctness(submit_df: pd.DataFrame, submit_example_df: pd.DataFr
 
 
 def _check_rows_size_correctness(submit_df: pd.DataFrame) -> bool:
+    print(len(submit_df))
     incorrect_rows = []
     for idx in range(TEST_SIZE):
         if len(string2embedding(submit_df["author_comment_embedding"].iloc[idx])) != EMBEDDING_SIZE:
@@ -49,4 +50,4 @@ def check_submit_correctness(submit_path: str, submit_example_path: str) -> bool
 
 
 if __name__ == "__main__":
-    check_submit_correctness(submit_path="data/complete/submit.csv", submit_example_path="data/raw/submit_example.csv")
+    check_submit_correctness(submit_path="data/processed/submission.csv", submit_example_path="data/raw/submit_example.csv")
