@@ -3,18 +3,18 @@ import os
 import pandas as pd
 from dotenv import load_dotenv
 
-from app.models.yandexgpt import YandexModel
+from app.models.yandexgpt import Model
 from app.utils.submit import generate_submit
 
 if __name__ == "__main__":
     load_dotenv()
 
 
-    yandex_gpt = YandexModel()
+    llm = Model()
 
 
     def predict(row: pd.Series) -> str:
-        return yandex_gpt.ask(row["task"], row["authors_solution"], row["student_solution"])
+        return llm.ask(row["task"], row["authors_solution"], row["student_solution"])
 
 
     generate_submit(
